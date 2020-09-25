@@ -1,64 +1,107 @@
-import React from 'react';
+import React, { lazy, Suspense, useContext } from 'react';
 import {
   BrowserRouter as Router,
   Route,
-  Switch
+  Switch,
+  Redirect
 } from 'react-router-dom';
 import './App.css';
 import AppShell from './AppShell';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, AuthContext } from './context/AuthContext';
 import { FetchProvider } from './context/FetchContext';
-import Account from './pages/Account';
-import Dashboard from './pages/Dashboard';
+// import Account from './pages/Account';
+// import Dashboard from './pages/Dashboard';
 import FourOFour from './pages/FourOFour';
 import Home from './pages/Home';
-import Inventory from './pages/Inventory';
+// import Inventory from './pages/Inventory';
 import Login from './pages/Login';
-import Settings from './pages/Settings';
+// import Settings from './pages/Settings';
 import Signup from './pages/Signup';
-import Users from './pages/Users';
+// import Users from './pages/Users';
+import axios from "axios";
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Inventory = lazy(() => import('./pages/Inventory'));
+const Account = lazy(() => import('./pages/Account'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Users = lazy(() => import('./pages/Users'));
+
+const LoadingFallback = () => (
+  <AppShell>
+    <div className="p-4">Loading...</div>
+  </AppShell>
+);
+const AuthenticatedRoute = ({ children, ...rest }) => {
+  const auth = useContext(AuthContext);
+  return (
+    <Route
+      {...rest}
+      render={() =>
+        auth.isAuthenticated() ? (
+          <AppShell>{children}</AppShell>
+        ) : (
+          <Redirect to="/" />
+        )
+      }
+    ></Route>
+  );
+};
+const UnauthenticatedRoutes = () => (
+  <Switch>
+    <Route path="/login">
+      <Login />
+    </Route>
+    <Route path="/signup">
+      <Signup />
+    </Route>
+    <Route exact path="/">
+      <Home />
+    </Route>
+    <Route path="*">
+      <FourOFour />
+    </Route>
+  </Switch>
+);
+const AdminRoute = ({ children, ...rest }) => {
+  const auth = useContext(AuthContext);
+  return (
+    <Route
+      {...rest}
+      render={() =>
+        auth.isAuthenticated() && auth.isAdmin() ? (
+          <AppShell>{children}</AppShell>
+        ) : (
+          <Redirect to="/" />
+        )
+      }
+    ></Route>
+  );
+};
 
 const AppRoutes = () => {
+  const authContext = useContext(AuthContext);
   return (
-    <Switch>
-      <Route path="/login">
-        <Login />
-      </Route>
-      <Route path="/signup">
-        <Signup />
-      </Route>
-      <Route exact path="/">
-        <Home />
-      </Route>
-      <Route path="/dashboard">
-        <AppShell>
-          <Dashboard />
-        </AppShell>
-      </Route>
-      <Route path="/inventory">
-        <AppShell>
-          <Inventory />
-        </AppShell>
-      </Route>
-      <Route path="/account">
-        <AppShell>
-          <Account />
-        </AppShell>
-      </Route>
-      <Route path="/settings">
-        <AppShell>
-          <Settings />
-        </AppShell>
-      </Route>
-      <Route path="/users">
-        <AppShell>
-          <Users />
-        </AppShell>
-      </Route>
-      <Route path="*">
-        <FourOFour />
-      </Route>
-    </Switch>
+    <>
+      <Suspense fallback={<LoadingFallback />}>
+        <Switch>
+          <AuthenticatedRoute path="/dashboard">
+            <Dashboard />
+          </AuthenticatedRoute>
+          <AdminRoute path="/inventory">
+            <Inventory />
+          </AdminRoute>
+          <AuthenticatedRoute path="/account">
+            <Account />
+          </AuthenticatedRoute>
+          <AuthenticatedRoute path="/settings">
+            <Settings />
+          </AuthenticatedRoute>
+          <AuthenticatedRoute path="/users">
+            <Users />
+          </AuthenticatedRoute>
+          <UnauthenticatedRoutes />
+        </Switch>
+      </Suspense>
+    </>
   );
 };
 
